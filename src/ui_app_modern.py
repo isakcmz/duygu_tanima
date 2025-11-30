@@ -31,7 +31,9 @@ class ModernEmotionApp:
         self.window = ctk.CTk()
         self.window.title("Duygu Tanıma Sistemi")
         self.window.geometry("1100x700")
-        self.window.resizable(False, False)
+        self.window.resizable(True, True)
+        
+
 
         # Ana grid
         self.window.grid_columnconfigure(0, weight=1)
@@ -144,6 +146,7 @@ class ModernEmotionApp:
             return
 
         ret, frame = self.cap.read()
+        frame = cv2.flip(frame, 1)
         if not ret:
             self.window.after(50, self.update_frame)
             return
