@@ -74,8 +74,8 @@ class ModernEmotionApp:
             self.sidebar_frame,
             text="❌ Kapat",
             font=("Segoe UI", 15),
-            fg_color="#ff3b30",
-            hover_color="#cc2b24",
+            fg_color="#ff3b31",
+            hover_color="#cc2b25",
             corner_radius=10,
             command=self.close_app
         )

@@ -86,8 +86,8 @@ class AppleEmotionApp:
         self.restart_button = ctk.CTkButton(
             self.sidebar,
             text="Restart Camera",
-            fg_color="#007aff",
-            hover_color="#0051c6"
+            fg_color="#0a6b20",
+            hover_color="#078018"
         )
         self.restart_button.grid(row=3, column=0, pady=(30, 10), padx=40, sticky="ew")
         self.restart_button.configure(command=self.restart_camera)
@@ -95,7 +95,7 @@ class AppleEmotionApp:
         self.close_button = ctk.CTkButton(
             self.sidebar,
             text="Close",
-            fg_color="#ff3b30",
+            fg_color="#fb3329",
             hover_color="#d3352a"
         )
         self.close_button.grid(row=4, column=0, pady=(5, 20), padx=40, sticky="ew")
