@@ -39,7 +39,7 @@ class ModernEmotionApp:
         self.window.grid_rowconfigure(0, weight=1)
 
 
-                # ================== LOG DOSYASI AYARI ==================
+        # ================== LOG DOSYASI AYARI ==================
         # logs/emotion_log.csv dosyasını hazırlıyoruz
         self.log_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -51,9 +51,22 @@ class ModernEmotionApp:
         os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
 
         # Uygulama her açıldığında log dosyasını sıfırdan başlat
-        with open(self.log_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(["timestamp", "emotion"])
+        # Log dosyasının yolu
+        self.log_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "logs",
+            "emotion_log.csv"
+        )
+        # Zaman takip değişkeni (her saniyeyi kontrol etmek için)
+        self.last_logged_second = None
+
+        # klasör yoksa oluştur
+        os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
+
+        # Seans başlangıcını dosyaya yaz
+        with open(self.log_path, "a", encoding="utf-8") as f:
+            f.write(f"\n=== SESSION START {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
+
         # =======================================================
 
 
@@ -188,13 +201,17 @@ class ModernEmotionApp:
 
 
                 # === LOG'A YAZ (yüz bulunduysa) ===
-        if emotion_text != "-":
-            with open(self.log_path, "a", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                writer.writerow([
-                    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    emotion_text
-                ])
+        # === HER SANİYEDE TEK SATIR LOG YAZ ===
+        current_second = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        if self.last_logged_second != current_second:
+            self.last_logged_second = current_second
+
+            if emotion_text != "-":
+                with open(self.log_path, "a", newline="", encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow([current_second, emotion_text])
+
 
 
 
@@ -216,34 +233,32 @@ class ModernEmotionApp:
         if self.cap:
             self.cap.release()
 
-        # =============== OTURUM ÖZETİ ===============
+            # =============== OTURUM ÖZETİ ===============
         stats = {}
         total = 0
 
-        try:
-            with open(self.log_path, "r", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                next(reader, None)  # header'ı atla
-                for row in reader:
-                    if len(row) != 2:
-                        continue
-                    _, emotion = row
+        # CSV'yi oku
+        with open(self.log_path, "r", encoding="utf-8") as f:
+            for line in f:
+                if "," in line and "SESSION" not in line:
+                    _, emotion = line.strip().split(",")
                     stats[emotion] = stats.get(emotion, 0) + 1
                     total += 1
-        except FileNotFoundError:
-            stats = {}
-            total = 0
 
-        print("\n--- OTURUM ÖZETİ ---")
-        if total == 0:
-            print("Hiç duygu verisi kaydedilmedi.")
-        else:
-            for emo, count in stats.items():
-                percent = (count / total) * 100
-                print(f"{emo}: %{percent:.1f}")
-        print("--------------------\n")
-        # ============================================
+        # Seansı bitiş tarihi ile yaz
+        with open(self.log_path, "a", encoding="utf-8") as f:
+            f.write(f"=== SESSION END {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ===\n")
 
+            if total == 0:
+                f.write("No emotion data recorded.\n")
+            else:
+                for emo, count in stats.items():
+                    percent = (count / total) * 100
+                    f.write(f"{emo}: %{percent:.1f}\n")
+
+            f.write("-----------------------------------------\n\n")
+
+        # Uygulamayı kapat
         self.window.destroy()
 
 
