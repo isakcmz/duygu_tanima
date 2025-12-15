@@ -11,7 +11,7 @@ from datetime import datetime
 MODEL_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "models",
-    "cnn_baseline.h5"
+    "cnn_v3_best.h5"
 )
 
 CASCADE_PATH = os.path.join(

@@ -1,6 +1,8 @@
 import os
 import numpy as np
 import tensorflow as tf
+from collections import Counter
+
 
 from src.config import (
     PROCESSED_DIR,
@@ -16,6 +18,19 @@ from src.config import (
 def load_npz(path):
     data = np.load(path)
     return data["X"], data["y"]
+
+
+def compute_class_weights(y, num_classes):
+    counts = Counter(y)
+    total = len(y)
+
+    class_weights = {}
+    for cls in range(num_classes):
+        class_weights[cls] = total / (num_classes * counts.get(cls, 1))
+
+    return class_weights
+
+
 
 # =========================
 # CNN + DATA AUGMENTATION
@@ -107,6 +122,10 @@ def main():
     X_train, y_train = load_npz(train_path)
     X_val, y_val = load_npz(val_path)
 
+    class_weights = compute_class_weights(y_train, NUM_CLASSES)
+    print("[INFO] Class Weights:", class_weights)
+
+
     print("[INFO] Model oluşturuluyor (CNN v3 + Data Augmentation)...")
     model = build_cnn_v3(input_shape=(IMG_H, IMG_W, 1), num_classes=NUM_CLASSES)
 
@@ -131,7 +150,8 @@ def main():
         validation_data=(X_val, y_val),
         epochs=25,
         batch_size=64,
-        callbacks=callbacks
+        callbacks=callbacks,
+        class_weight=class_weights
     )
 
     final_path = os.path.join(MODEL_DIR, "cnn_v3_final.h5")
