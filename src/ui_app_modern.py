@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import tensorflow as tf
+from collections import deque
 from PIL import Image, ImageTk
 import customtkinter as ctk
 import csv
@@ -11,7 +12,7 @@ from datetime import datetime
 MODEL_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "models",
-    "cnn_v3_best.h5"
+    "cnn_lstm_best.h5"
 )
 
 CASCADE_PATH = os.path.join(
@@ -153,8 +154,9 @@ class ModernEmotionApp:
         self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
         self.cap = cv2.VideoCapture(0)
 
-        self.pred_history = []
-        self.smooth_window = 8
+        # LSTM için 10 frame buffer
+        self.frame_buffer = deque(maxlen=10)
+
 
         self.update_frame()
         self.window.protocol("WM_DELETE_WINDOW", self.close_app)
@@ -166,6 +168,7 @@ class ModernEmotionApp:
         if self.cap:
             self.cap.release()
         self.cap = cv2.VideoCapture(0)
+        self.frame_buffer.clear()
 
     # =====================================================================
     # FRAME UPDATE LOOP
@@ -185,17 +188,20 @@ class ModernEmotionApp:
         for (x, y, w, h) in faces:
             face = gray[y:y+h, x:x+w]
             face = cv2.resize(face, (48, 48))
-            face_norm = face.reshape(1, 48, 48, 1) / 255.0
+            face_norm = face.reshape(48, 48, 1) / 255.0
 
-            preds = self.model.predict(face_norm, verbose=0)[0]
+            # buffer'a ekle
+            self.frame_buffer.append(face_norm)
 
-            self.pred_history.append(preds)
-            if len(self.pred_history) > self.smooth_window:
-                self.pred_history.pop(0)
+            # 10 frame dolunca LSTM ile tahmin yap
+            if len(self.frame_buffer) == 10:
+                seq = np.array(self.frame_buffer).reshape(1, 10, 48, 48, 1)
+                preds = self.model.predict(seq, verbose=0)[0]
+                emotion_idx = int(np.argmax(preds))
+                emotion_text = EMOTIONS[emotion_idx]
+            else:
+                emotion_text = "-"
 
-            avg = np.mean(self.pred_history, axis=0)
-            emotion_idx = np.argmax(avg)
-            emotion_text = EMOTIONS[emotion_idx]
 
             cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 200, 150), 2)
 
