@@ -5,6 +5,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 RAW_DIR = os.path.join(DATA_DIR, "raw")
 PROCESSED_DIR = os.path.join(DATA_DIR, "processed")
+MODEL_DIR = os.path.join(BASE_DIR, "models")
+LOG_DIR = os.path.join(BASE_DIR, "logs")
 
 FER_CSV_PATH = os.path.join(RAW_DIR, "fer2013.csv")
 
@@ -16,6 +18,11 @@ IMG_HEIGHT = 48
 IMG_WIDTH = 48
 IMG_CHANNELS = 1
 
+IMG_H = IMG_HEIGHT
+IMG_W = IMG_WIDTH
+
+NUM_CLASSES = 7
+
 EMOTION_MAP = {
     0: "angry",
     1: "disgust",
@@ -25,3 +32,11 @@ EMOTION_MAP = {
     5: "surprise",
     6: "neutral"
 }
+
+EMOTIONS = list(EMOTION_MAP.values())
+
+# ==================================================
+# LOG FILES
+# ==================================================
+EMOTION_LOG_PATH = os.path.join(LOG_DIR, "emotion_log.csv")
+
