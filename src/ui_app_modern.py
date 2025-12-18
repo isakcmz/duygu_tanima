@@ -9,7 +9,13 @@ import csv
 from datetime import datetime
 
 
-MODEL_PATH = os.path.join(
+CNN_MODEL_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "models",
+    "cnn_v3_best.h5"
+)
+
+LSTM_MODEL_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "models",
     "cnn_lstm_best.h5"
@@ -118,6 +124,16 @@ class ModernEmotionApp:
         )
         self.close_button.grid(row=3, column=0, pady=10, padx=30, sticky="ew")
 
+
+        self.model_switch = ctk.CTkSwitch(
+        self.sidebar_frame,
+        text="LSTM Modu",
+        font=("Segoe UI", 14),
+        command=self.toggle_model
+        )
+        self.model_switch.grid(row=4, column=0, pady=20)
+
+
         # =====================================================================
         # SAĞ PANEL (KAMERA + ALTINDA DUYGU)
         # =====================================================================
@@ -150,7 +166,16 @@ class ModernEmotionApp:
         self.big_emotion_label.grid(row=1, column=0, pady=(20, 30))
 
         # MODEL + CAMERA
-        self.model = tf.keras.models.load_model(MODEL_PATH)
+
+        # MODELLER
+        self.cnn_model = tf.keras.models.load_model(CNN_MODEL_PATH)
+        self.lstm_model = tf.keras.models.load_model(LSTM_MODEL_PATH)
+
+        # AKTİF MODEL MODU
+        self.model_mode = "CNN"  # "CNN" veya "LSTM"
+
+        # LSTM için frame buffer
+        self.sequence_buffer = deque(maxlen=10)
         self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
         self.cap = cv2.VideoCapture(0)
 
@@ -170,6 +195,21 @@ class ModernEmotionApp:
         self.cap = cv2.VideoCapture(0)
         self.frame_buffer.clear()
 
+
+
+    def toggle_model(self):
+        if self.model_switch.get() == 1:
+            self.model_mode = "LSTM"
+            self.sequence_buffer.clear()
+            self.pred_history.clear()
+        else:
+            self.model_mode = "CNN"
+            self.sequence_buffer.clear()
+            self.pred_history.clear()
+
+
+
+
     # =====================================================================
     # FRAME UPDATE LOOP
     # =====================================================================
@@ -188,19 +228,33 @@ class ModernEmotionApp:
         for (x, y, w, h) in faces:
             face = gray[y:y+h, x:x+w]
             face = cv2.resize(face, (48, 48))
-            face_norm = face.reshape(48, 48, 1) / 255.0
+            face_norm = face.reshape(1, 48, 48, 1) / 255.0
 
-            # buffer'a ekle
-            self.frame_buffer.append(face_norm)
+            # ================= MODEL SEÇİMİ =================
+            if self.model_mode == "CNN":
+                preds = self.cnn_model.predict(face_norm, verbose=0)[0]
+                self.pred_history.append(preds)
 
-            # 10 frame dolunca LSTM ile tahmin yap
-            if len(self.frame_buffer) == 10:
-                seq = np.array(self.frame_buffer).reshape(1, 10, 48, 48, 1)
-                preds = self.model.predict(seq, verbose=0)[0]
-                emotion_idx = int(np.argmax(preds))
+                if len(self.pred_history) > self.smooth_window:
+                    self.pred_history.pop(0)
+
+                avg_preds = np.mean(self.pred_history, axis=0)
+                emotion_idx = int(np.argmax(avg_preds))
                 emotion_text = EMOTIONS[emotion_idx]
-            else:
-                emotion_text = "-"
+
+            elif self.model_mode == "LSTM":
+                # LSTM için sequence buffer
+                self.sequence_buffer.append(face_norm[0])
+
+                if len(self.sequence_buffer) == 10:
+                    seq = np.array(self.sequence_buffer)
+                    seq = seq.reshape(1, 10, 48, 48, 1)
+
+                    preds = self.lstm_model.predict(seq, verbose=0)[0]
+                    emotion_idx = int(np.argmax(preds))
+                    emotion_text = EMOTIONS[emotion_idx]
+                else:
+                    emotion_text = "..."
 
 
             cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 200, 150), 2)
@@ -213,7 +267,7 @@ class ModernEmotionApp:
         if self.last_logged_second != current_second:
             self.last_logged_second = current_second
 
-            if emotion_text != "-":
+            if emotion_text not in ["-", "..."]:
                 with open(self.log_path, "a", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)
                     writer.writerow([current_second, emotion_text])
@@ -234,6 +288,8 @@ class ModernEmotionApp:
         self.video_label.configure(image=imgtk)
 
         self.window.after(15, self.update_frame)
+
+
 
     def close_app(self):
         if self.cap:
