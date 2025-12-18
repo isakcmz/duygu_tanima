@@ -174,13 +174,17 @@ class ModernEmotionApp:
         # AKTİF MODEL MODU
         self.model_mode = "CNN"  # "CNN" veya "LSTM"
 
+        # CNN smoothing için
+        self.pred_history = []
+        self.smooth_window = 8
+
         # LSTM için frame buffer
         self.sequence_buffer = deque(maxlen=10)
+
         self.face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
         self.cap = cv2.VideoCapture(0)
 
-        # LSTM için 10 frame buffer
-        self.frame_buffer = deque(maxlen=10)
+        
 
 
         self.update_frame()
@@ -193,8 +197,7 @@ class ModernEmotionApp:
         if self.cap:
             self.cap.release()
         self.cap = cv2.VideoCapture(0)
-        self.frame_buffer.clear()
-
+        
 
 
     def toggle_model(self):
